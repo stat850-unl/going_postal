@@ -1,30 +1,43 @@
 Stat 850 Project Description
 ================
-Firstname Lastname, Firstname Lastname, …
+David Nguyen
 
-## Instructions
+Instructions
+------------
 
-Each member of your team should modify this document in some way and
-push their modifications to the repository in a separate commit. This
-will ensure that you have set your repository up in a way that ensures
-all group members are working with the same repository.
+Each member of your team should modify this document in some way and push their modifications to the repository in a separate commit. This will ensure that you have set your repository up in a way that ensures all group members are working with the same repository.
 
-Note that you must compile your readme (this document) for it to
-properly display as part of your github repository.
+Note that you must compile your readme (this document) for it to properly display as part of your github repository.
 
-Once you have received feedback on your project proposal (via Canvas)
-you may alter this README so that it describes your final project
-instead of the project proposal.
+Once you have received feedback on your project proposal (via Canvas) you may alter this README so that it describes your final project instead of the project proposal.
 
-## Data Set
+Data Set
+--------
 
-Provide a link to your dataset here, and a description of the variables
-in the data set.
+Original pdf of [postal data](https://www.courtlistener.com/recap/gov.uscourts.nysd.542242/gov.uscourts.nysd.542242.45.1.pdf). These data were cited by [the Guardian](https://www.theguardian.com/us-news/2020/sep/21/usps-post-office-mail-slowdowns-louis-dejoy) as evidence that
 
-## Potential Topics to Explore Using the Data Set
+> "The United States Postal Service (USPS) saw a severe decline in the rate of on-time delivery of first-class mail after Louis DeJoy took over as postmaster general."
+
+I've uploaded the cleaned and formatted version of the data as mail\_on\_time.csv. The data set contains 8325 rows and 5 columns.
+
+The variables are:
+
+-   Date: self-explanatory
+-   Area: The region of interest ("Nation", "Capital Metro", "Eastern", "Great Lakes", "Northeast", "Pacific", "Southern", "Western")
+-   District: mail district within an Area (e.g., "Atlanta", "Baltimore", "Capital", "Greater S Carolina", "Greensboro", "Mid-Carolinas" ...)
+-   mail\_type: If the mail is first-class, marketing, or periodical
+-   pct\_on\_time: The percent of mail delivered on time
+
+Potential Topics to Explore Using the Data Set
+----------------------------------------------
 
 Describe avenues you might explore using the data
 
-## Group Members
+I'm interested in looking at USPS performance data (pct\_on\_time) over the past year to detect if there changes that may have been caused by the SARS-CoV-2 pandemic or by Louis DeJoy's operational changes.
 
-List all of the project contributors here.
+I am interested in looking at the timing of changes in USPS performance with respect to COVID-19 shutdown and the appointment of Louis DeJoy as well as spatial variation in changes in USPS performance. I hope to create interactive line plots and maps.
+
+Group Members
+-------------
+
+David Nguyen
