@@ -8,9 +8,10 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+theme_set(theme_minimal())
 ```
 
-```{r read_data}
+```{r read_data, message = FALSE}
 if (file.exists("mail_on_time.csv")) {
   mail <- read_csv("mail_on_time.csv")
 } else {
@@ -36,5 +37,15 @@ write_csv(mail, "mail_on_time.csv")
 rm(txt)
 mail <- read_csv("mail_on_time.csv")
 }
-
 ```
+
+```{r plot_national}
+mail %>% filter(area == "Nation") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = pct_on_time, col = mail_type, linetype = mail_type), size = 2) +
+  ylim(0, 100) +
+  theme(legend.position = "top") +
+   theme(axis.text.x = element_text(angle = 90)) +
+  scale_x_date(breaks = "1 week")
+```
+
