@@ -1,0 +1,40 @@
+---
+title: "Report"
+author: "David Nguyen"
+date: "November 1, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r read_data}
+if (file.exists("mail_on_time.csv")) {
+  mail <- read_csv("mail_on_time.csv")
+} else {
+  library(tabulizer)
+file_location <- "https://www.courtlistener.com/recap/gov.uscourts.nysd.542242/gov.uscourts.nysd.542242.45.1.pdf"
+
+txt <- extract_tables(file_location, output = "data.frame")
+txt[[1]] <- txt[[1]] %>% mutate(Area = "Nation")
+
+mail <- bind_rows(txt)
+mail <- mail %>% pivot_longer(cols = 2:4,
+                      names_to = "mail_type",
+                      values_to = "pct_on_time") %>%
+  mutate(Week = as.Date(Week, "%m/%d/%Y"),
+         mail_type = case_when(grepl("First", mail_type) ~ "first_class",
+                               grepl("Market", mail_type) ~ "marketing",
+                               grepl("Period", mail_type) ~ "periodical",
+                               TRUE ~ NA_character_),
+         pct_on_time = str_replace(pct_on_time, "%", ""),
+         pct_on_time = as.numeric(pct_on_time)) %>%
+  select("date" = Week, "area" = Area, "district" = District, mail_type, pct_on_time)
+write_csv(mail, "mail_on_time.csv")
+rm(txt)
+mail <- read_csv("mail_on_time.csv")
+}
+
+```
