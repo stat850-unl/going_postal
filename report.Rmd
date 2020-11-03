@@ -9,9 +9,31 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 theme_set(theme_minimal())
+
+# Get more data here: https://about.usps.com/what/performance/service-performance/
 ```
 
+## Data Set
+Original pdf of [postal data](https://www.courtlistener.com/recap/gov.uscourts.nysd.542242/gov.uscourts.nysd.542242.45.1.pdf).
+These data were cited by [the Guardian](https://www.theguardian.com/us-news/2020/sep/21/usps-post-office-mail-slowdowns-louis-dejoy) as evidence that 
+
+> "The United States Postal Service (USPS) saw a severe decline in the rate of on-time delivery of first-class mail after Louis DeJoy took over as postmaster general."
+
+I've uploaded the cleaned and formatted version of the data as mail_on_time.csv. The data set contains 8325 rows and 5 columns.
+
+The variables are:
+
+* Date: self-explanatory
+* Area: The region of interest ("Nation", "Capital Metro", "Eastern", "Great Lakes", "Northeast", 
+"Pacific", "Southern", "Western")
+* District: mail district within an Area (e.g., "Atlanta", "Baltimore", "Capital", "Greater S Carolina", 
+"Greensboro", "Mid-Carolinas" ...)
+* mail_type: If the mail is first-class, marketing, or periodical
+* pct_on_time: The percent of mail delivered on time
+
 ```{r read_data, message = FALSE}
+# if data file exists, then read it in
+# if not, grab original file, extract, process, and save data
 if (file.exists("mail_on_time.csv")) {
   mail <- read_csv("mail_on_time.csv")
 } else {
@@ -40,12 +62,112 @@ mail <- read_csv("mail_on_time.csv")
 ```
 
 ```{r plot_national}
+# plot national averages for each mail type
 mail %>% filter(area == "Nation") %>%
   ggplot() +
   geom_line(aes(x = date, y = pct_on_time, col = mail_type, linetype = mail_type), size = 2) +
   ylim(0, 100) +
   theme(legend.position = "top") +
    theme(axis.text.x = element_text(angle = 90)) +
-  scale_x_date(breaks = "1 week")
+  scale_x_date(breaks = "1 week") +
+  labs(title = "USPS performance",
+       subtitle = "National average",
+       y = "Percentage of mail delivered on time")
 ```
+
+```{r}
+mail %>% filter(area != "Nation", is.na(district)) %>%
+  ggplot() +
+  geom_line(aes(x = date, y = pct_on_time, col = area)) +
+  facet_wrap(~mail_type) +
+  ylim(0, 100) +
+  theme(legend.position = "top") +
+  labs(title = "USPS performance",
+       subtitle = "Regional average",
+       y = "Percentage of mail delivered on time")
+```
+
+We can see two distict periods of lower than usual performance: April - May which is most likely due to disruptions caused by the SARS-CoV-2 pandemic; July - August which may reasonably be attributed to the implementation of new USPS guidelines in July. 
+
+Note the regional variation in mail performance. USPS on-time-delivery performance is more severe in the Northreast and Great Lakes regions. The pandemic related shock to mail is only apparent for these two regions whereas the a decrease in performance from administrative changes is observable across all regions. This is consistent with the nation-wide implementation of administrative changes whereas pandemic related impacts may have varied across regions.
+
+# Area-specific performance by mail type
+
+```{r}
+mail %>% filter(area != "Nation", 
+                !is.na(district),
+                mail_type == "first_class") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = pct_on_time, group = district)) +
+  facet_wrap(~area) +
+  ylim(0, 100) +
+  labs(title = "Percent of first-class mail delivered on time",
+       y = "Percentage of mail delivered on time")
+```
+
+
+```{r}
+mail %>% filter(area != "Nation", 
+                !is.na(district),
+                mail_type == "marketing") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = pct_on_time, group = district)) +
+  facet_wrap(~area) +
+  ylim(0, 100) +
+  labs(title = "Percent of marketing mail delivered on time",
+       y = "Percentage of mail delivered on time")
+```
+```{r}
+mail %>% filter(area != "Nation", 
+                !is.na(district),
+                mail_type == "periodical") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = pct_on_time, group = district)) +
+  facet_wrap(~area) +
+  ylim(0, 100) +
+  labs(title = "Percent of periodicals delivered on time",
+       y = "Percentage of mail delivered on time")
+```
+
+```{r}
+mail %>% filter(area %in% c("Great Lakes", "Northeast"), 
+                !is.na(district),
+                mail_type == "first_class") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = pct_on_time, col = district)) +
+  facet_wrap(~area) +
+  ylim(0, 100) +
+  labs(title = "Percent of first-class mail delivered on time",
+       y = "Percentage of mail delivered on time")
+```
+
+Here, we can see that Detroit and New York districts had the greatest drop in percent of on time deliveries.
+
+```{r}
+mail %>% filter(area == "Nation") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = pct_on_time), size = 2) +
+  geom_line(data = filter(mail, district %in% c("Detroit", "New York")), aes(x = date, y = pct_on_time, col = district)) + 
+  facet_wrap(~mail_type) +
+  theme(legend.position = "top") +
+  ylim(0, 100)
+```
+
+In this plot I compare the national average performance to Detroit and New York. Interestingly, it appears that while New York had severe drops in performance during the initial disruption of the pandemic, the effect of changes USPS policy on New York performance were not different than the national average.
+
+# To-dos
+
+**Additional Data? ** 
+
+* I just discovered that USPS has been releasing weekly updates on their performance through the beginning of November. (https://drive.google.com/drive/folders/1-1NOd2yTvramgknUBIXFYhtbyWC4YOPh). I will add these updates to the current data set.
+* It may be interesting to get data on the population size in each district and the [total mail volumes](https://about.usps.com/what/performance/service-performance/) in each district. These data in addition to the percentage on time data I have would convey a more complete picture of the impact of postal disruptions. For instance, we might consider a 10 % drop in delivery on time in a highly populated district to be more impactful than the same drop in a low population district because many more people were likely to be affected.
+* Dates of disruptions from pandemic and administrative changes.
+
+**Interactive graphics**
+
+* I want to build on the existing interactive graphic included in the orignal [Guardian publication](https://www.theguardian.com/us-news/2020/sep/21/usps-post-office-mail-slowdowns-louis-dejoy]).
+    + I want to allow users to choose the mail-type they are looking at (Guardians only includes first-class mail)
+    + Allow comparisons between different districts (Guardian's only allows comparison of one district with the national average)
+    + Allow users to download the data
+
 
