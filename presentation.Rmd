@@ -1,0 +1,135 @@
+---
+title: "Going Postal"
+author: "David Nguyen"
+date: "November 21, 2020"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(plotly)
+theme_set(theme_minimal())
+
+# mail performance data
+mail <- read_csv("mail_on_time_2020-10-31.csv")
+
+# time of policy changes
+start_changes <- as.Date("2020-06-16") # date Louis DeJoy started at USPS and administrative changes began
+suspend_changes <- as.Date("2020-08-18")  #https://about.usps.com/newsroom/national-releases/2020/0818-postmaster-general-louis-dejoy-statement.htm
+
+# set ylims
+y_lwr <- 35 # mail %>% ungroup() %>%  filter(mail_type == "first_class") %>% filter(pct_on_time == min(pct_on_time))
+y_upr <- 100
+
+```
+
+
+## Context - Mail slow-downs at the USPS
+
+> "The United States Postal Service (USPS) saw a severe decline in the rate of on-time delivery of first-class mail after Louis DeJoy took over as postmaster general."
+
+---
+
+```{r, out.width = "600px"}
+knitr::include_graphics("guardian_graphic.png")
+```
+
+## USPS performance data
+
+```{r, out.width = "800px"}
+knitr::include_graphics("ex_page.png")
+```
+
+## Extract data with tabulizer::extract_tables()
+
+```{r}
+mail %>% head(10) %>% knitr::kable()
+```
+
+---
+
+```{r plot_national}
+# plot national averages for each mail type
+# mail %>% filter(area == "Nation") %>%
+#   ggplot() +
+#   geom_line(aes(x = date, y = pct_on_time, col = mail_type, linetype = mail_type), size = 2) +
+#   geom_vline(xintercept = start_changes) +
+#   geom_vline(xintercept = suspend_changes) +
+#   ylim(0, 100) +
+#   theme(legend.position = "top") +
+#   #  theme(axis.text.x = element_text(angle = 90)) +
+#   # scale_x_date(breaks = "1 week") +
+#   labs(title = "USPS performance",
+#        subtitle = "National average",
+#        y = "Percentage of mail delivered on time",
+#        col = "mail type",
+#        linetype = "mail type")
+
+mail %>%
+  ggplot() +
+  geom_line(aes(x = date, y = nat_average, col = mail_type, linetype = mail_type), size = 2) +
+  geom_vline(xintercept = start_changes) +
+  geom_vline(xintercept = suspend_changes) +
+  ylim(0, 100) +
+  labs(title = "USPS performance",
+       subtitle = "National average",
+       y = "Percentage of mail delivered on time",
+       col = "mail type",
+       linetype = "mail type")
+```
+
+---
+
+```{r, out.width = "800px"}
+knitr::include_graphics("usps-areas-lg.jpg")
+```
+
+Source: [USPS OIG](https://www.uspsoig.gov/about-us/about-oig)
+
+<!-- additional maps here https://slideplayer.com/slide/7858742/ -->
+
+## There is spatial variation in mail performance
+
+```{r plot_by_district}
+mail %>% 
+  filter(mail_type == "first class") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = pct_on_time, group = district)) +
+  geom_vline(xintercept = start_changes) +
+  geom_vline(xintercept = suspend_changes) +
+  facet_wrap(~area) +
+  ylim(y_lwr, y_upr) +
+  labs(title = "Percent of first-class mail delivered on time",
+       y = "Percentage of mail delivered on time")
+```
+
+## Where was mail performance < 70 %
+
+```{r}
+# did mail performance drop below
+perf_thresh <- 70
+bad_performance <-
+  mail %>% 
+  filter(mail_type == "first class") %>%
+  group_by(district) %>%
+  mutate(bad = pct_on_time < perf_thresh) %>%
+  filter(bad) %>%
+  pull(district) %>% unique()
+
+mail %>% filter(district %in% bad_performance, mail_type == "first class") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = nat_average), size = 2, alpha = 0.5) +
+  geom_line(aes(x = date, y = pct_on_time, group = district, col = district), size = 1) + 
+  geom_vline(xintercept = start_changes) +
+  geom_vline(xintercept = suspend_changes) +
+  facet_wrap(~area) +
+  theme(legend.position = "top") +
+  ylim(y_lwr, y_upr) +
+  labs(title = "Percent of first class mail delivered on time",
+       y = "Percentage of mail delivered on time")
+```
+
+## Thanks for watching!
+
+For raw data files: [https://www.savethepostoffice.com/](https://www.savethepostoffice.com/)
