@@ -17,6 +17,7 @@ mail <- read_csv("mail_on_time_2020-10-31.csv")
 # time of policy changes
 start_changes <- as.Date("2020-06-16") # date Louis DeJoy started at USPS and administrative changes began
 suspend_changes <- as.Date("2020-08-18")  #https://about.usps.com/newsroom/national-releases/2020/0818-postmaster-general-louis-dejoy-statement.htm
+last_guardian <- as.Date("2020-09-05") 
 
 # set ylims
 y_lwr <- 35 # mail %>% ungroup() %>%  filter(mail_type == "first_class") %>% filter(pct_on_time == min(pct_on_time))
@@ -27,13 +28,22 @@ y_upr <- 100
 
 ## Context - Mail slow-downs at the USPS
 
-> "The United States Postal Service (USPS) saw a severe decline in the rate of on-time delivery of first-class mail after Louis DeJoy took over as postmaster general."
+> "The United States Postal Service (USPS) saw a severe decline in the rate of on-time delivery of first-class mail after Louis DeJoy took over as postmaster general." - The Guardian
 
----
+* 57 policy changes in June and July to reduce costs
+    * Eliminate late and extra trips
+    * ["No analysis of the service impacts of these various changes was conducted and documentation and guidance to the field for these strategies was very limited and almost exclusively oral."](https://www.uspsoig.gov/document/operational-changes-mail-delivery) - USPS Office of Inspector General report to Congress
+
+## "Revealed: evidence shows huge mail slowdowns after Trump ally took over" - The Guardian
 
 ```{r, out.width = "600px"}
 knitr::include_graphics("guardian_graphic.png")
 ```
+
+## Questions
+
+* Which districts were most effected by policy changes?
+* How did performance change after September 5^th^
 
 ## USPS performance data
 
@@ -47,62 +57,53 @@ knitr::include_graphics("ex_page.png")
 mail %>% head(10) %>% knitr::kable()
 ```
 
----
+## Performance below goal, increased variability
 
 ```{r plot_national}
-# plot national averages for each mail type
-# mail %>% filter(area == "Nation") %>%
-#   ggplot() +
-#   geom_line(aes(x = date, y = pct_on_time, col = mail_type, linetype = mail_type), size = 2) +
-#   geom_vline(xintercept = start_changes) +
-#   geom_vline(xintercept = suspend_changes) +
-#   ylim(0, 100) +
-#   theme(legend.position = "top") +
-#   #  theme(axis.text.x = element_text(angle = 90)) +
-#   # scale_x_date(breaks = "1 week") +
-#   labs(title = "USPS performance",
-#        subtitle = "National average",
-#        y = "Percentage of mail delivered on time",
-#        col = "mail type",
-#        linetype = "mail type")
-
 mail %>%
+  filter(mail_type == "first class") %>%
   ggplot() +
-  geom_line(aes(x = date, y = nat_average, col = mail_type, linetype = mail_type), size = 2) +
+  geom_line(aes(x = date, y = nat_average), size = 2) +
+  geom_line(aes(x = date, y = area_average, col = area), alpha = 0.5, size = 1.5) +
   geom_vline(xintercept = start_changes) +
   geom_vline(xintercept = suspend_changes) +
+  geom_vline(xintercept = last_guardian, linetype = 2) +
+  geom_hline(yintercept = 93, linetype = 2, size = 1.5) +
   ylim(0, 100) +
-  labs(title = "USPS performance",
-       subtitle = "National average",
+  labs(title = "Percentage of first class mail delivered on time",
+       caption = "Horizontal dashed line denotes USPS performance goal\nPolicy changes in effect between solid lines\nNew data after dashed line",
        y = "Percentage of mail delivered on time",
-       col = "mail type",
-       linetype = "mail type")
+       col = "Area")
 ```
 
----
+<!-- --- -->
 
-```{r, out.width = "800px"}
-knitr::include_graphics("usps-areas-lg.jpg")
-```
+<!-- ```{r, out.width = "800px"} -->
+<!-- knitr::include_graphics("usps-areas-lg.jpg") -->
+<!-- ``` -->
 
-Source: [USPS OIG](https://www.uspsoig.gov/about-us/about-oig)
+<!-- Source: [USPS OIG](https://www.uspsoig.gov/about-us/about-oig) -->
 
 <!-- additional maps here https://slideplayer.com/slide/7858742/ -->
 
-## There is spatial variation in mail performance
+<!-- ## But, there is spatial variation in mail performance -->
 
-```{r plot_by_district}
-mail %>% 
-  filter(mail_type == "first class") %>%
-  ggplot() +
-  geom_line(aes(x = date, y = pct_on_time, group = district)) +
-  geom_vline(xintercept = start_changes) +
-  geom_vline(xintercept = suspend_changes) +
-  facet_wrap(~area) +
-  ylim(y_lwr, y_upr) +
-  labs(title = "Percent of first-class mail delivered on time",
-       y = "Percentage of mail delivered on time")
-```
+<!-- ```{r plot_by_district} -->
+<!-- mail %>%  -->
+<!--   filter(mail_type == "first class") %>% -->
+<!--   ggplot() + -->
+<!--   geom_line(aes(x = date, y = pct_on_time, group = district)) + -->
+<!--   geom_vline(xintercept = start_changes) + -->
+<!--   geom_vline(xintercept = suspend_changes) + -->
+<!--   geom_vline(xintercept = last_guardian, linetype = 2) + -->
+<!--   geom_hline(yintercept = 93, linetype = 2, col = "red") + -->
+<!--   ylim(0, 100) + -->
+<!--   labs(title = "Percentage of first class mail delivered on time", -->
+<!--        caption = "Horizontal dashed line denotes USPS performance goal\nPolicy changes in effect between solid lines\nNew data after dashed line", -->
+<!--        y = "Percentage of mail delivered on time", -->
+<!--        col = "Area") + -->
+<!--     facet_wrap(~area) -->
+<!-- ``` -->
 
 ## Where was mail performance < 70 %
 
@@ -123,12 +124,24 @@ mail %>% filter(district %in% bad_performance, mail_type == "first class") %>%
   geom_line(aes(x = date, y = pct_on_time, group = district, col = district), size = 1) + 
   geom_vline(xintercept = start_changes) +
   geom_vline(xintercept = suspend_changes) +
+  geom_vline(xintercept = last_guardian, linetype = 2) +
+  geom_hline(yintercept = 93, linetype = 2, col = "red") +
   facet_wrap(~area) +
   theme(legend.position = "top") +
-  ylim(y_lwr, y_upr) +
+  ylim(0, y_upr) +
   labs(title = "Percent of first class mail delivered on time",
+       caption = "Horizontal dashed line denotes USPS performance goal\nPolicy changes in effect between solid lines\nNew data after dashed line",
        y = "Percentage of mail delivered on time")
 ```
+
+## Conclusion
+
+* Yes, performance dropped during policy change
+    * Some districts recovered, others declined again
+    * Greater variability in performance this Fall
+* Other factors besides policy affected performance
+    * COVID-19
+    * Something else?
 
 ## Thanks for watching!
 
