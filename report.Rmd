@@ -10,7 +10,6 @@ bibliography: going_postal.bib
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 theme_set(theme_minimal())
-# Get more data here: https://about.usps.com/what/performance/service-performance/
 
 # time of policy changes
 start_changes <- as.Date("2020-06-16") # date Louis DeJoy started at USPS and administrative changes began
@@ -18,7 +17,7 @@ suspend_changes <- as.Date("2020-08-18")  #https://about.usps.com/newsroom/natio
 last_guardian <- as.Date("2020-09-05") 
 
 # set ylims
-y_lwr <- 35 # mail %>% ungroup() %>%  filter(mail_type == "first_class") %>% filter(pct_on_time == min(pct_on_time))
+y_lwr <- 35 
 y_upr <- 100
 ```
 
@@ -146,7 +145,7 @@ Here, I plotted the area-specific average delivery performance over time. We can
 
 
 ```{r}
-# did mail performance drop below
+# did mail performance drop below perf_tresh
 perf_thresh <- 70
 bad_performance <-
   mail %>% 
@@ -176,6 +175,7 @@ mail %>% filter(district %in% bad_performance, mail_type == "first class") %>%
 In this chart, I plot districts which had performance drop below 70 % at any time during 2020. In the Northeast, the decline below 70 % occured during the height of the COVID-19 outbreak in the New York City area. Declines in other areas only occured after DeJoy's policy were first implemented. In some districts, performance recovered (Honolulu), others recovered then declined again (Philadelphia Metro), and others never recovered (Baltimore).
 
 ```{r}
+# get worst perforaming districts
 mail %>% filter(mail_type == "first class", date == last(date)) %>% arrange(pct_on_time) %>%
   slice(1:5) %>%
   mutate(diff_area = pct_on_time - area_average,
