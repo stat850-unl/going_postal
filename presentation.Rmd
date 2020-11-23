@@ -28,22 +28,22 @@ y_upr <- 100
 
 ## Context - Mail slow-downs at the USPS
 
-> "The United States Postal Service (USPS) saw a severe decline in the rate of on-time delivery of first-class mail after Louis DeJoy took over as postmaster general." - The Guardian
-
 * 57 policy changes in June and July to reduce costs
     * Eliminate late and extra trips
     * ["No analysis of the service impacts of these various changes was conducted and documentation and guidance to the field for these strategies was very limited and almost exclusively oral."](https://www.uspsoig.gov/document/operational-changes-mail-delivery) - USPS Office of Inspector General report to Congress
+    
+* Policy changes temporarily suspended after outcry (Aug. 18^th^)
 
-## "Revealed: evidence shows huge mail slowdowns after Trump ally took over" - The Guardian
+<!-- ## "Revealed: evidence shows huge mail slowdowns after Trump ally took over" - The Guardian -->
 
-```{r, out.width = "600px"}
-knitr::include_graphics("guardian_graphic.png")
-```
+<!-- ```{r, out.width = "600px"} -->
+<!-- knitr::include_graphics("guardian_graphic.png") -->
+<!-- ``` -->
 
 ## Questions
 
 * Which districts were most effected by policy changes?
-* How did performance change after September 5^th^
+* Did performance improve after policies were temporariliy suspended?
 
 ## USPS performance data
 
@@ -133,6 +133,19 @@ mail %>% filter(district %in% bad_performance, mail_type == "first class") %>%
        caption = "Horizontal dashed line denotes USPS performance goal\nPolicy changes in effect between solid lines\nNew data after dashed line",
        y = "Percentage of mail delivered on time")
 ```
+
+## Worst districts
+
+```{r}
+mail %>% filter(mail_type == "first class", date == last(date)) %>% arrange(pct_on_time) %>%
+  slice(1:5) %>%
+  mutate(diff_area = pct_on_time - area_average,
+         diff_nat = pct_on_time - nat_average) %>%
+  rename("% on time" = pct_on_time, "diff. from area" = diff_area, "diff. from nation" = diff_nat) %>%
+  select(-mail_type, - date, - area_average, - nat_average) %>%
+  knitr::kable(caption = "Worst performing districts for on-time delivery of first class mail (October 31, 2020)")
+```
+
 
 ## Conclusion
 
