@@ -1,37 +1,28 @@
 ---
-title: "Report"
+title: "Going Postal: mail slow-downs under Postmaster Louis DeJoy"
 author: "David Nguyen"
 date: "November 1, 2020"
-output: html_document
+output: "pdf_document"
+bibliography: going_postal.bib
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 theme_set(theme_minimal())
-
 # Get more data here: https://about.usps.com/what/performance/service-performance/
+
+# time of policy changes
+start_changes <- as.Date("2020-06-16") # date Louis DeJoy started at USPS and administrative changes began
+suspend_changes <- as.Date("2020-08-18")  #https://about.usps.com/newsroom/national-releases/2020/0818-postmaster-general-louis-dejoy-statement.htm
+last_guardian <- as.Date("2020-09-05") 
+
+# set ylims
+y_lwr <- 35 # mail %>% ungroup() %>%  filter(mail_type == "first_class") %>% filter(pct_on_time == min(pct_on_time))
+y_upr <- 100
 ```
 
-## Data Set
-Original pdf of [postal data](https://www.courtlistener.com/recap/gov.uscourts.nysd.542242/gov.uscourts.nysd.542242.45.1.pdf).
-These data were cited by [the Guardian](https://www.theguardian.com/us-news/2020/sep/21/usps-post-office-mail-slowdowns-louis-dejoy) as evidence that 
-
-> "The United States Postal Service (USPS) saw a severe decline in the rate of on-time delivery of first-class mail after Louis DeJoy took over as postmaster general."
-
-I've uploaded the cleaned and formatted version of the data as mail_on_time.csv. The data set contains 8325 rows and 5 columns.
-
-The variables are:
-
-* Date: self-explanatory
-* Area: The region of interest ("Nation", "Capital Metro", "Eastern", "Great Lakes", "Northeast", 
-"Pacific", "Southern", "Western")
-* District: mail district within an Area (e.g., "Atlanta", "Baltimore", "Capital", "Greater S Carolina", 
-"Greensboro", "Mid-Carolinas" ...)
-* mail_type: If the mail is first-class, marketing, or periodical
-* pct_on_time: The percent of mail delivered on time
-
-```{r read_data, message = FALSE}
+```{r read_old_data, eval = FALSE, message = FALSE}
 # if data file exists, then read it in
 # if not, grab original file, extract, process, and save data
 if (file.exists("mail_on_time.csv")) {
@@ -59,21 +50,156 @@ write_csv(mail, "mail_on_time.csv")
 rm(txt)
 mail <- read_csv("mail_on_time.csv")
 }
+
+start_changes <- as.Date("2020-06-16") # date Louis DeJoy started at USPS and administrative changes began
+suspend_changes <- as.Date("2020-08-18")  #https://about.usps.com/newsroom/national-releases/2020/0818-postmaster-general-louis-dejoy-statement.htm
 ```
 
-```{r plot_national}
-# plot national averages for each mail type
-mail %>% filter(area == "Nation") %>%
-  ggplot() +
-  geom_line(aes(x = date, y = pct_on_time, col = mail_type, linetype = mail_type), size = 2) +
-  ylim(0, 100) +
-  theme(legend.position = "top") +
-   theme(axis.text.x = element_text(angle = 90)) +
-  scale_x_date(breaks = "1 week") +
-  labs(title = "USPS performance",
-       subtitle = "National average",
-       y = "Percentage of mail delivered on time")
+```{r read_new_data, message=FALSE}
+# if data file exists, then read it in
+# if not, grab original file, extract, process, and save data
+if (file.exists("mail_on_time_2020-10-31.csv")) {
+  mail <- read_csv("mail_on_time_2020-10-31.csv")
+} else {
+# jones FOIA request data up to 2020-10-31
+file_location <- "raw_data/USPS Service Performance Reports thru week of 10-31-20.pdf"
+
+txt <- tabulizer::extract_tables(file_location, output = "data.frame", pages = 8:62)
+
+# create tibble of all data
+new_mail <- bind_rows(txt)
+new_mail <- new_mail %>% pivot_longer(cols = 4:6,
+                      names_to = "mail_type",
+                      values_to = "pct_on_time") %>%
+  mutate(Week = as.Date(Week, "%m/%d/%Y"),
+         mail_type = case_when(grepl("First", mail_type) ~ "first class",
+                               grepl("Market", mail_type) ~ "marketing",
+                               grepl("Period", mail_type) ~ "periodical",
+                               TRUE ~ NA_character_),
+         pct_on_time = str_replace(pct_on_time, "%", ""),
+         pct_on_time = as.numeric(pct_on_time)) %>%
+  select("date" = Week, "area" = Area, "district" = District, mail_type, pct_on_time)
+new_mail <- new_mail %>% group_by(area, mail_type, date) %>% mutate(area_average = mean(pct_on_time))
+new_mail <- new_mail %>% group_by(mail_type, date) %>% mutate(nat_average = mean(pct_on_time))
+write_csv(new_mail, "mail_on_time_2020-10-31.csv")
+}
 ```
+
+## Background
+
+The percent of first class mail delivered on time by the United States Postal Service (USPS) fell dramatically during the summer of 2020. 
+In some districts, the percent of on time mail delivery dropped as low as 60 % compared to the national average of 93 % in early 2020 [@levine_revealed_2020]. 
+These declines in USPS performance were attributed to changes made Louis DeJoy, a new postmaster general who began his position on June 16^th^ and quickly implemented a three operational changes changes and 57 initiatives to reduce operating costs of the USPS [@uspsoig_operational_2020]. 
+These changes included the elimination of extra or late trips to deliver mail, elimination of overtime, decommisioning high-speed mail sorting machines, removing mail boxes, reducing operating hours, and changing the classification of election mail. 
+These facts, in addition to the timing of changes so close to an election during a pandemic, and DeJoy's ties to Trump and the Republican party as a campaign donor, lead to a lawsuit filed by 13 states against the USPS that these changes occured for political reasons [@cnn_read_2020].
+Furthermore, a fact-finding report by the USPS Office of Inspector General created after congressional hearings regarding DeJoy's changes found that while the USPS estimated the savings in work hours by the changes they "did not complete a study or analysis of the impact the changes would make on mail service prior to implementation," despite the obvious importance of mail service to the mission of the USPS [@uspsoig_operational_2020]. Public and congressional pressure resulted in a [statement from DeJoy](https://about.usps.com/newsroom/national-releases/2020/0818-postmaster-general-louis-dejoy-statement.htm) on August 18^th^ that all new operational changes would be suspended until after the election.
+ A subsequent order from Federal Judge Stanley Bastian called on the USPS to suspend all recent operational changes and initiatives [@cnn_read_2020]. 
+Despite the temporary suspension of these policies, analysis by The Guardian found that as of September 5^th^ on time mail delivery had not yet recoved to previous rates and were around 60 % in Baltimore, Detroit, and northern Ohio. 
+
+The goal of this document is to assess what happened to USPS on time delivery rates in between the last date included in the Guardian's analysis and the US election. To do so, I found and extracted data on USPS performance up to October 31^st^ and plotted that data to visually assess how performance changed over time.
+
+## Data 
+The original pdf of USPS performance data used in the Guardian's analysis can be found [here](https://www.courtlistener.com/recap/gov.uscourts.nysd.542242/gov.uscourts.nysd.542242.45.1.pdf).
+In this document, I used more recent USPS performance data obtained from [a release by Steve Hutkins](https://drive.google.com/drive/folders/1WIiUIu0PP_5D1j8R_-T7IN7kVWk9lvuj) who had obtained the data by filing a FOIA request on November 11^th^, 2020. Steve's FOIA request on Novermber 11^th^ yielded USPS performance data up to the week of October 31^st^ whereas the data used by the Guardian only included up to the week of September 5^th^.
+
+These data were in a pdf table format. To extract these data I used the Tabulizer package. After extracting the data I used functions from the Tidyverse set of packages to clean and re-calculate summary statistics. All plots were created using ggplot2.
+
+The cleaned and formatted version of the data were saved as mail_on_time_2020-10-31.csv. For illustration, here are the first five rows:
+
+```{r ex_data}
+mail %>% head(5) %>%
+  knitr::kable()
+```
+
+The meaning of the variables is as follows:
+
+* Date: Week that performance was calculated
+* Area: The region of interest ("Nation", "Capital Metro", "Eastern", "Great Lakes", "Northeast", 
+"Pacific", "Southern", "Western")
+* District: mail district within an Area (e.g., "Atlanta", "Baltimore", "Capital", "Greater S Carolina", 
+"Greensboro", "Mid-Carolinas" ...)
+* mail_type: If the mail is first-class, marketing, or periodical
+* pct_on_time: The percent of mail delivered on time in a district
+* area_average: The average percent of mail delivered on time in an area
+* nat_average: The average percent of mail delivered on time across the nation
+
+# Results
+
+```{r plot_national}
+mail %>%
+  filter(mail_type == "first class") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = nat_average), size = 2) +
+  geom_line(aes(x = date, y = area_average, col = area), alpha = 0.5, size = 1.5) +
+  geom_vline(xintercept = start_changes) +
+  geom_vline(xintercept = suspend_changes) +
+  geom_vline(xintercept = last_guardian, linetype = 2) +
+  geom_hline(yintercept = 93, linetype = 2, size = 1.5) +
+  ylim(0, 100) +
+  labs(title = "Percentage of first class mail delivered on time",
+       caption = "Horizontal dashed line denotes USPS performance goal\nPolicy changes in effect between solid lines\nNew data after dashed line",
+       y = "Percentage of mail delivered on time",
+       col = "Area")
+```
+
+Here, I plotted the area-specific average delivery performance over time. We can see that all regions had similar performance rates of 93 % in the beggining of the year. A notable deviation is in the Northeast region between April and June. This decrease in performance is driven by the New York district which was hit hard by the SARS-CoV-2 pandemic at the time. Following the implementation of changes by DeJoy in mid-June, there is a clear decrease in on-time delivery performance across all regions. This clear signal of reduced performance across all regions makes it unlikely that the losses in performance were caused by misinterpretations of the new rules by local USPS administrators as charged by USPS headquarters [@katz_postal_2020]. Following the cessation of the new policies some areas like the Pacific (Hawaii and California) saw increases in performance whereas other areas like Capital Metro (mid-Atlantic states) continued to decline. This resulted in greater variance in performance across areas during the fall compared to earlier in the year when all areas had similar performance. 
+
+
+```{r}
+# did mail performance drop below
+perf_thresh <- 70
+bad_performance <-
+  mail %>% 
+  filter(mail_type == "first class") %>%
+  group_by(district) %>%
+  mutate(bad = pct_on_time < perf_thresh) %>%
+  filter(bad) %>%
+  pull(district) %>% unique()
+
+mail %>% filter(district %in% bad_performance, mail_type == "first class") %>%
+  ggplot() +
+  geom_line(aes(x = date, y = nat_average), size = 2, alpha = 0.5) +
+  geom_line(aes(x = date, y = pct_on_time, group = district, col = district), size = 1) + 
+  geom_vline(xintercept = start_changes) +
+  geom_vline(xintercept = suspend_changes) +
+  geom_vline(xintercept = last_guardian, linetype = 2) +
+  geom_hline(yintercept = 93, linetype = 2, col = "red") +
+  facet_wrap(~area) +
+  theme(legend.position = "top") +
+  ylim(0, y_upr) +
+  labs(title = "Percent of first class mail delivered on time",
+       caption = "Horizontal dashed line denotes USPS performance goal\nPolicy changes in effect between solid lines\nNew data after dashed line",
+       y = "Percentage of mail delivered on time",
+       col = "")
+```
+
+In this chart, I plot districts which had performance drop below 70 % at any time during 2020. In the Northeast, the decline below 70 % occured during the height of the COVID-19 outbreak in the New York City area. Declines in other areas only occured after DeJoy's policy were first implemented. In some districts, performance recovered (Honolulu), others recovered then declined again (Philadelphia Metro), and others never recovered (Baltimore).
+
+```{r}
+mail %>% filter(mail_type == "first class", date == last(date)) %>% arrange(pct_on_time) %>%
+  slice(1:5) %>%
+  mutate(diff_area = pct_on_time - area_average,
+         diff_nat = pct_on_time - nat_average) %>%
+  rename("% on time" = pct_on_time, "diff. from area" = diff_area, "diff. from nation" = diff_nat) %>%
+  select(-mail_type, - date, - area_average, - nat_average) %>%
+  knitr::kable(caption = "Worst performing districts for on-time delivery of first class mail (October 31, 2020)")
+```
+
+As of October 31^st^ the worst performaing districtes were located in the Eastern, Western, and Capital Metro ares. The declines in performance for the Eastern and Western regions followed a temporary period of partial recovery whereas the low performance in the Capital Metro area was sustained since August. It is not clear what has the caused the new declines in performance for the Eastern and Western areas. But, it appears that for Baltimore (Captical Metro) there was never a recovery in on-time delivery following DeJoy's policy changes.
+
+
+## Conclusions
+
+The claim made in the Guardian's analysis, that USPS on-time deliveries had not recovered to levels seen in early 2020 is still true when including additional data up to October 31^st^.
+
+## Software packages
+
+## References
+
+```{r}
+knitr::knit_exit()
+```
+
 
 ```{r}
 mail %>% filter(area != "Nation", is.na(district)) %>%
@@ -148,6 +274,8 @@ mail %>% filter(area == "Nation") %>%
   ggplot() +
   geom_line(aes(x = date, y = pct_on_time), size = 2) +
   geom_line(data = filter(mail, district %in% c("Detroit", "New York")), aes(x = date, y = pct_on_time, col = district)) + 
+  geom_vline(xintercept = start_changes) +
+  geom_vline(xintercept = suspend_changes) +
   facet_wrap(~mail_type) +
   theme(legend.position = "top") +
   ylim(0, 100)
